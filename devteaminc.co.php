@@ -1,5 +1,13 @@
 <?php
 // webhook file called by a commit to github
+
+// debug function for outputting debug information
+function debug($message)
+{
+  error_log($message);
+  echo $message.PHP_EOL;
+}
+
 // Create a stream
 $opts = array(
   'http'=>array(
@@ -8,9 +16,12 @@ $opts = array(
   )
 );
 $context = stream_context_create($opts);
+
+// contact the github meta api to get an up to date list of webhook CIDR's
 $ghmeta = file_get_contents('https://api.github.com/meta', false, $context);
 $meta = json_decode($ghmeta);
 
+// match an IP to a CIDR mask
 function ipCIDRCheck($ip, $cidr)
 {
   list ($net, $mask) = explode('/', $cidr);
@@ -21,12 +32,7 @@ function ipCIDRCheck($ip, $cidr)
   return ($ipIpNet == $ipNet);
 }
 
-function debug($message)
-{
-  error_log($message);
-  echo $message.PHP_EOL;
-}
-
+// check if the requesting IP is a github webhook
 $match = false;
 foreach ($meta->hooks as $cidr) 
 {
@@ -37,12 +43,14 @@ foreach ($meta->hooks as $cidr)
   }   
 }
 
+// if IP doesn't match Github or there is no payload from github then die
 if (!$match || !isset($_POST['payload'])) 
 {
   debug('no payload or matching webhook IP');
-  die;
+  die();
 }
 
+// decode github payload
 $payload = json_decode($_POST['payload']);
 
 // Init vars
@@ -52,6 +60,7 @@ $LOCAL_REPO         = "{$LOCAL_ROOT}/{$LOCAL_REPO_NAME}";
 $REMOTE_REPO        = "git@github.com:devteaminc/devteaminc.co.git";
 $DESIRED_BRANCH     = "build";
 
+// only update the site when a commit has been made to $DESIRED_BRANCH
 if($payload->ref == "refs/heads/$DESIRED_BRANCH")
 {
   debug('deploy started');
