@@ -54,9 +54,7 @@ if (!$match || !isset($_POST['payload']))
 $payload = json_decode($_POST['payload']);
 
 // Init vars
-$LOCAL_ROOT           =	"/var/www/devteaminc.co";
-$LOCAL_REPO_NAME      = "public";
-$LOCAL_REPO           = "{$LOCAL_ROOT}/{$LOCAL_REPO_NAME}";
+$LOCAL_REPO           =	"/var/www/devteaminc.co/public";
 $REMOTE_REPO          = "git@github.com:devteaminc/devteaminc.co.git";
 $DESIRED_BRANCH       = "build";
 
@@ -65,14 +63,19 @@ if($payload->ref == "refs/heads/$DESIRED_BRANCH")
 {
 	debug('deploy started');
 
-	// Delete local repo if it exists
-	if (file_exists($LOCAL_REPO_NAME)) 
+	// check if local repository already exists
+	if (file_exists($LOCAL_REPO."/.git") == false)
 	{   
-		shell_exec("rm -rf {$LOCAL_REPO_NAME}");
+		// local repository doesn't exist so perform initial clone
+		debug('repository does not exist - performing a git clone');
+		echo shell_exec("cd {$LOCAL_REPO} && git clone -b {$DESIRED_BRANCH} {$REMOTE_REPO} .");	
 	}
-
-	// Clone fresh repo from github using desired local repo name and checkout the desired branch 
-	echo shell_exec("cd {$LOCAL_ROOT} && git clone -b {$DESIRED_BRANCH} {$REMOTE_REPO} {$LOCAL_REPO_NAME}");
+	else
+	{
+		// Pull repository updates from Github
+		debug('repository does exist - performing a git pull');
+		echo shell_exec("cd {$LOCAL_REPO} && git pull");
+	}
 
 	debug('deploy complete ' . mktime());
 }
